@@ -26,7 +26,7 @@
   <form
     class="card upload-form"
     method="POST"
-    use:enhance(({ form }) => {
+    use:enhance={({ formElement }) => {
       submitting = true;
       actionResult = null;
       return async ({ result, update }) => {
@@ -34,7 +34,7 @@
           if (result.type === 'success') {
             actionResult = result.data as any;
             // 清空所有输入栏，避免重复提交
-            form.reset();
+            formElement.reset();
             title = '';
             course_name = '';
             course_teacher = '';
