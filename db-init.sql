@@ -72,7 +72,16 @@ CREATE TABLE IF NOT EXISTS comments (
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. 行为日志表 (Action_Logs) - 审计与统计
+-- 6. 用户会话表 (User_Sessions) - 会话管理
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id  VARCHAR(64) NOT NULL UNIQUE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. 行为日志表 (Action_Logs) - 审计与统计
 CREATE TABLE IF NOT EXISTS action_logs (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT REFERENCES users(id),  -- 可为空（游客）
