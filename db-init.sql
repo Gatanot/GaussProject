@@ -11,6 +11,17 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 1.1 会话表 (User_Sessions) - 登录状态管理
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id  VARCHAR(128) NOT NULL UNIQUE,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    expires_at  TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
+
 -- 2. 课程/分类表 (Courses) - 维度数据
 CREATE TABLE IF NOT EXISTS courses (
     id          SERIAL PRIMARY KEY,

@@ -26,7 +26,7 @@ pool.on('error', (err: Error) => {
 });
 
 // 目标 schema（可通过环境变量 DB_SCHEMA 配置），默认使用 public
-const TARGET_SCHEMA = env.DB_SCHEMA ?? 'public';
+const TARGET_SCHEMA = env.DB_SCHEMA ?? 'gaussdb';
 export const SCHEMA = TARGET_SCHEMA;
 
 // 在每个连接建立时设置默认 search_path，避免非目标 schema 导致的未找到表问题
@@ -75,21 +75,25 @@ async function checkTablesExist(): Promise<boolean> {
                     `SELECT 
                         EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = $1 AND tablename = 'users') AS has_users,
                         EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = $1 AND tablename = 'courses') AS has_courses,
-                        EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = $1 AND tablename = 'resources') AS has_resources`,
+                        EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = $1 AND tablename = 'resources') AS has_resources,
+                        EXISTS(SELECT 1 FROM pg_tables WHERE schemaname = $1 AND tablename = 'user_sessions') AS has_user_sessions`,
                     [TARGET_SCHEMA]
                 );
 
-                const row = (result.rows && result.rows[0]) ? result.rows[0] as any : { has_users: false, has_courses: false, has_resources: false };
-                let ok = !!(row.has_users && row.has_courses && row.has_resources);
+                const row = (result.rows && result.rows[0])
+                    ? result.rows[0] as any
+                    : { has_users: false, has_courses: false, has_resources: false, has_user_sessions: false };
+                let ok = !!(row.has_users && row.has_courses && row.has_resources && row.has_user_sessions);
                 console.log('核心表存在性（pg_tables）:', row, '初判结果:', ok);
 
                 // 回退：直接执行 SELECT 判断是否可用（利用当前 search_path）
                 if (!ok) {
-                        const flags = { users: false, courses: false, resources: false };
+                        const flags = { users: false, courses: false, resources: false, user_sessions: false };
                         try { await pool.query('SELECT 1 FROM users LIMIT 1'); flags.users = true; } catch {}
                         try { await pool.query('SELECT 1 FROM courses LIMIT 1'); flags.courses = true; } catch {}
                         try { await pool.query('SELECT 1 FROM resources LIMIT 1'); flags.resources = true; } catch {}
-                        ok = flags.users && flags.courses && flags.resources;
+                        try { await pool.query('SELECT 1 FROM user_sessions LIMIT 1'); flags.user_sessions = true; } catch {}
+                        ok = flags.users && flags.courses && flags.resources && flags.user_sessions;
                         console.log('核心表存在性（SELECT 回退）:', flags, '终判结果:', ok);
                 }
 
@@ -188,10 +192,12 @@ async function ensureCoreTables(): Promise<void> {
             role          VARCHAR(10) DEFAULT 'user',
             created_at    TIMESTAMPTZ DEFAULT NOW()
         );`,
-        `CREATE TABLE IF NOT EXISTS ${TARGET_SCHEMA}.resource_tags (
-            resource_id BIGINT REFERENCES ${TARGET_SCHEMA}.resources(id) ON DELETE CASCADE,
-            tag_name    VARCHAR(30) NOT NULL,
-            PRIMARY KEY (resource_id, tag_name)
+        `CREATE TABLE IF NOT EXISTS ${TARGET_SCHEMA}.user_sessions (
+            id           BIGSERIAL PRIMARY KEY,
+            user_id      BIGINT NOT NULL REFERENCES ${TARGET_SCHEMA}.users(id) ON DELETE CASCADE,
+            session_id   VARCHAR(128) NOT NULL UNIQUE,
+            created_at   TIMESTAMPTZ DEFAULT NOW(),
+            expires_at   TIMESTAMPTZ NOT NULL
         );`,
         `CREATE TABLE IF NOT EXISTS ${TARGET_SCHEMA}.courses (
             id          SERIAL PRIMARY KEY,
@@ -212,7 +218,14 @@ async function ensureCoreTables(): Promise<void> {
             view_count      INT DEFAULT 0,
             download_count  INT DEFAULT 0,
             created_at      TIMESTAMPTZ DEFAULT NOW()
-        );`
+        );`,
+        `CREATE TABLE IF NOT EXISTS ${TARGET_SCHEMA}.resource_tags (
+            resource_id BIGINT REFERENCES ${TARGET_SCHEMA}.resources(id) ON DELETE CASCADE,
+            tag_name    VARCHAR(30) NOT NULL,
+            PRIMARY KEY (resource_id, tag_name)
+        );`,
+        `CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON ${TARGET_SCHEMA}.user_sessions(user_id);`,
+        `CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON ${TARGET_SCHEMA}.user_sessions(expires_at);`
     ];
 
     for (let i = 0; i < statements.length; i++) {
