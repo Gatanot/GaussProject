@@ -2,20 +2,24 @@ import { redirect, fail } from '@sveltejs/kit';
 import { verifyUser, generateSessionToken, createSession } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// 如果用户已登录，重定向到首页
+export const load: PageServerLoad = async ({ locals, url }) => {
+	// 如果用户已登录，重定向到首页或指定页面
 	if (locals.user) {
-		throw redirect(302, '/');
+		const redirectTo = url.searchParams.get('redirect') ?? '/';
+		throw redirect(302, redirectTo);
 	}
 
-	return {};
+	return {
+		redirectTo: url.searchParams.get('redirect') ?? '/'
+	};
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async ({ request, cookies, url }) => {
 		const formData = await request.formData();
 		const username = formData.get('username')?.toString();
 		const password = formData.get('password')?.toString();
+		const redirectTo = url.searchParams.get('redirect') ?? '/';
 
 		// 表单验证
 		if (!username || !password) {
@@ -47,7 +51,7 @@ export const actions: Actions = {
 			maxAge: 60 * 60 * 24 * 7 // 7 天
 		});
 
-		// 登录成功，重定向到首页
-		throw redirect(302, '/');
+		// 登录成功，重定向到首页或指定页面
+		throw redirect(302, redirectTo);
 	}
 };
