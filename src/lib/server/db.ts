@@ -1,16 +1,18 @@
 import { Pool } from 'pg';
 import type { QueryResult, QueryResultRow } from 'pg';
+import { env } from '$env/dynamic/private';
 
 // 配置优先使用环境变量，保留合理的默认值以方便本地开发
+// 使用 SvelteKit 的服务端 env 模块读取私有环境变量，确保这些敏感值不会被打包到客户端
 const pool = new Pool({
-    host: process.env.DB_HOST ?? '127.0.0.1',
-    port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USER ?? 'gaussdb',
-    password: process.env.DB_PASSWORD ?? '0316Pro?',
-    database: process.env.DB_DATABASE ?? 'postgres',
-    max: Number(process.env.DB_MAX_CLIENTS ?? 20),
-    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS ?? 30000),
-    connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 2000),
+    host: env.DB_HOST ?? '127.0.0.1',
+    port: Number(env.DB_PORT ?? 5432),
+    user: env.DB_USER ?? 'gaussdb',
+    password: env.DB_PASSWORD ?? '0316Pro?',
+    database: env.DB_DATABASE ?? 'postgres',
+    max: Number(env.DB_MAX_CLIENTS ?? 20),
+    idleTimeoutMillis: Number(env.DB_IDLE_TIMEOUT_MS ?? 30000),
+    connectionTimeoutMillis: Number(env.DB_CONNECTION_TIMEOUT_MS ?? 2000),
 });
 
 // 监听错误事件（防止连接池因后台错误导致程序崩溃）

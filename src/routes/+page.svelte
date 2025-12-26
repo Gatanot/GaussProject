@@ -1,7 +1,33 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	
+	import { dev } from '$app/environment';
+
 	export let data: PageData;
+
+	let running = false;
+	let result: any = null;
+	let error: string | null = null;
+
+	async function runTest() {
+		running = true;
+		result = null;
+		error = null;
+
+		try {
+			const res = await fetch('/api/db-test', { method: 'POST' });
+			const json = await res.json();
+			if (!res.ok) {
+				error = json.error || `请求失败: ${res.status}`;
+				result = json;
+			} else {
+				result = json;
+			}
+		} catch (e: any) {
+			error = e?.message ?? String(e);
+		} finally {
+			running = false;
+		}
+	}
 </script>
 
 <div class="container">
@@ -31,13 +57,28 @@
 				
 				<p class="timestamp">测试时间: {new Date(data.timestamp).toLocaleString('zh-CN')}</p>
 			</div>
+
+			<div class="test-section">
+				<h3>数据库 CRUD 测试</h3>
+				{#if !dev}
+					<p>数据库测试仅在开发模式可用。</p>
+				{:else}
+					<button class="btn" on:click={runTest} disabled={running}>{running ? '运行中...' : 'Run DB Test'}</button>
+					{#if result}
+						<pre class="result">{JSON.stringify(result, null, 2)}</pre>
+					{/if}
+					{#if error}
+						<pre class="error">{error}</pre>
+					{/if}
+				{/if}
+			</div>
 		{:else}
 			<div class="error-details">
 				<h3>错误详情</h3>
 				<p>请检查以下内容：</p>
 				<ul>
 					<li>OpenGauss 数据库是否正在运行</li>
-					<li>主机地址和端口是否正确 (当前配置: 127.0.0.1:8888)</li>
+					<li>主机地址和端口是否正确 (当前配置: 127.0.0.1:5432)</li>
 					<li>用户名和密码是否正确</li>
 					<li>数据库名称是否存在</li>
 					<li>防火墙是否允许连接</li>
