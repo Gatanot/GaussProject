@@ -14,18 +14,17 @@ CREATE TABLE IF NOT EXISTS users (
 -- 2. 课程/分类表 (Courses) - 维度数据
 CREATE TABLE IF NOT EXISTS courses (
     id          SERIAL PRIMARY KEY,
-    code        VARCHAR(20) NOT NULL, -- 例: CS101
     name        VARCHAR(100) NOT NULL,
     teacher     VARCHAR(50),
     department  VARCHAR(50)
 );
 
 -- 预制数据
-INSERT INTO courses (code, name, teacher, department)
+INSERT INTO courses (name, teacher, department)
 VALUES
-    ('CS001', '数据库系统原理', '王老师', '计算机学院'),
-    ('MATH01', '高等数学(上)', '李老师', '理学院'),
-    ('ENG101', '大学英语', '张老师', '外语学院');
+    ('数据库系统原理', '王老师', '计算机学院'),
+    ('高等数学(上)', '李老师', '理学院'),
+    ('大学英语', '张老师', '外语学院');
 
 -- 3. 资源主表 (Resources) - 核心业务
 -- 策略：只存链接，文件内容的精髓通过 content_detail (摘要) 体现
@@ -72,16 +71,7 @@ CREATE TABLE IF NOT EXISTS comments (
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. 用户会话表 (User_Sessions) - 会话管理
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id          BIGSERIAL PRIMARY KEY,
-    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    session_id  VARCHAR(64) NOT NULL UNIQUE,
-    expires_at  TIMESTAMPTZ NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 7. 行为日志表 (Action_Logs) - 审计与统计
+-- 6. 行为日志表 (Action_Logs) - 审计与统计
 CREATE TABLE IF NOT EXISTS action_logs (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT REFERENCES users(id),  -- 可为空（游客）

@@ -1,4 +1,4 @@
-import { query } from '$lib/server/db';
+import { query, SCHEMA } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -13,11 +13,10 @@ export const load: PageServerLoad = async () => {
 				r.download_count,
 				r.created_at,
 				c.name as course_name,
-				c.code as course_code,
 				u.username as author_name
-			FROM resources r
-			JOIN courses c ON r.course_id = c.id
-			JOIN users u ON r.user_id = u.id
+			FROM ${SCHEMA}.resources r
+			JOIN ${SCHEMA}.courses c ON r.course_id = c.id
+			JOIN ${SCHEMA}.users u ON r.user_id = u.id
 			ORDER BY (r.view_count * 0.7 + r.download_count * 0.3) DESC
 			LIMIT 5
 		`);
@@ -27,7 +26,7 @@ export const load: PageServerLoad = async () => {
 			SELECT
 				payload,
 				count(*) as search_count
-			FROM action_logs
+			FROM ${SCHEMA}.action_logs
 			WHERE action_type = 'SEARCH'
 				AND payload IS NOT NULL
 				AND payload != ''

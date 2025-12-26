@@ -9,3 +9,7 @@
 </svelte:head>
 
 {@render children()}
+
+<style global>
+  @import '../app.css';
+</style>

@@ -30,7 +30,7 @@ CREATE TABLE users (
 -- 2. 课程/分类表 (Courses) - 维度数据
 CREATE TABLE courses (
     id          SERIAL PRIMARY KEY,
-    code        VARCHAR(20) NOT NULL, -- 例: CS101
+    code        VARCHAR(20) NOT NULL, -- 建议不要了
     name        VARCHAR(100) NOT NULL,
     teacher     VARCHAR(50),
     department  VARCHAR(50)

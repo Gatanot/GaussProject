@@ -107,7 +107,7 @@
 				{#each data.hotResources as resource}
 					<a href="/resource/{resource.id}" class="resource-card card">
 						<div class="resource-header">
-							<span class="course-tag">{resource.course_code}</span>
+							<span class="course-tag">{resource.course_name}</span>
 							<span class="resource-stats">{resource.view_count} 次查看 · {resource.download_count} 次下载</span>
 						</div>
 						<h3 class="resource-title">{resource.title}</h3>
