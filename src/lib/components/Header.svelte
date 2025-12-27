@@ -19,8 +19,7 @@
 			{#if user}
 				<a href="/my" class="nav-link nav-user">👤 {user.username}</a>
 			{:else}
-				<a href="/login" class="btn btn-ghost">登录</a>
-				<a href="/register" class="btn btn-primary">注册</a>
+				<a href="/login" class="btn btn-primary">登录</a>
 			{/if}
 		</nav>
 	</div>

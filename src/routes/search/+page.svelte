@@ -33,21 +33,23 @@
 
 <div class="search-shell">
 	<!-- 顶部搜索区 -->
-	<header class="search-header">
+	<div class="search-header">
 		<div class="container">
-			<a href="/" class="logo">OpenBrain</a>
 			<div class="search-bar-wrap">
-				<input
-					type="text"
-					bind:value={searchQuery}
-					on:keypress={handleKeyPress}
-					placeholder="搜索课程资料、笔记、题库..."
-					class="search-input-main"
-				/>
+				<div class="search-input-group">
+					<span class="search-icon">🔍</span>
+					<input
+						type="text"
+						bind:value={searchQuery}
+						on:keypress={handleKeyPress}
+						placeholder="搜索课程资料、笔记、题库..."
+						class="search-input-main"
+					/>
+				</div>
 				<button on:click={performSearch} class="btn btn-primary">搜索</button>
 			</div>
 		</div>
-	</header>
+	</div>
 
 	<!-- 搜索结果区 -->
 	<main class="search-main container">
@@ -153,37 +155,39 @@
 		background: var(--c-surface);
 		border-bottom: 1px solid var(--c-border);
 		padding: 1rem 0;
-		position: sticky;
-		top: 0;
-		z-index: 100;
-		backdrop-filter: blur(10px);
 	}
 
 	.search-header .container {
 		display: flex;
 		align-items: center;
-		gap: 1.5rem;
-	}
-
-	.logo {
-		font-family: var(--font-serif);
-		font-size: 1.4rem;
-		font-weight: 700;
-		color: var(--c-primary);
-		text-decoration: none;
-		white-space: nowrap;
+		justify-content: center;
 	}
 
 	.search-bar-wrap {
-		flex: 1;
+		width: 100%;
 		display: flex;
 		gap: 0.75rem;
 		max-width: 700px;
 	}
 
+	.search-input-group {
+		flex: 1;
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.search-icon {
+		position: absolute;
+		left: 1rem;
+		font-size: 1rem;
+		opacity: 0.5;
+		pointer-events: none;
+	}
+
 	.search-input-main {
 		flex: 1;
-		padding: 0.65rem 1rem;
+		padding: 0.75rem 1rem 0.75rem 2.75rem;
 		border: 1px solid var(--c-border);
 		border-radius: var(--radius-md);
 		font-size: 0.95rem;
