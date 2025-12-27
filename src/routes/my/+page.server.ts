@@ -1,6 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { query, SCHEMA } from '$lib/server/db';
 import { redirect } from '@sveltejs/kit';
+import { deleteSession } from '$lib/server/auth';
 
 export const load: PageServerLoad = async ({ locals }) => {
     // 未登录用户重定向到登录页
@@ -132,6 +133,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
+    // 登出
+    logout: async ({ cookies }) => {
+        const sessionId = cookies.get('session');
+        if (sessionId) {
+            await deleteSession(sessionId);
+            cookies.delete('session', { path: '/' });
+        }
+        throw redirect(302, '/login');
+    },
+
     // 删除资源
     deleteResource: async ({ request, locals }) => {
         if (!locals.user) {

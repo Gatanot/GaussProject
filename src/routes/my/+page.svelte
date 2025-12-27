@@ -49,7 +49,12 @@
 	<main class="my-main container">
 		<!-- 页面标题 -->
 		<div class="page-header">
-			<h1>个人中心</h1>
+			<div class="page-header-top">
+				<h1>个人中心</h1>
+				<form method="POST" action="?/logout" use:enhance>
+					<button type="submit" class="btn btn-outline btn-logout">🚪 退出登录</button>
+				</form>
+			</div>
 			<p class="page-subtitle">欢迎回来，{data.user?.username}！</p>
 		</div>
 
@@ -204,9 +209,27 @@
 		margin-bottom: 2rem;
 	}
 
+	.page-header-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+	}
+
 	.page-header h1 {
 		font-size: 2rem;
 		margin-bottom: 0.5rem;
+	}
+
+	.btn-logout {
+		color: var(--c-text-sub);
+		border-color: var(--c-border);
+	}
+
+	.btn-logout:hover {
+		color: #DC2626;
+		border-color: #DC2626;
+		background: rgba(220, 38, 38, 0.05);
 	}
 
 	.page-subtitle {
