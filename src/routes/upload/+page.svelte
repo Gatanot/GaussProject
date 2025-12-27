@@ -12,6 +12,14 @@
   import { enhance } from '$app/forms';
   let submitting = false;
   let actionResult: { success: boolean; message: string; resourceId?: number } | null = null;
+  let summaryMessage = '';
+  let summaryLoading = false;
+
+  const isAllowedFile = (f: File) => {
+    const mimeOk = ['text/plain', 'text/markdown'].includes(f.type);
+    const extOk = /\.(md|txt)$/i.test(f.name);
+    return mimeOk || extOk;
+  };
 </script>
 
 <div class="container upload-shell">
@@ -89,18 +97,41 @@
     <div class="form-row">
       <label for="summary_file">上传文件生成摘要（.md/.txt）</label>
       <input id="summary_file" type="file" accept=".md,.txt,text/markdown,text/plain" />
-      <button type="button" class="btn btn-outline" on:click={async () => {
+      <button type="button" class="btn btn-outline" disabled={summaryLoading} on:click={async () => {
+        summaryMessage = '';
         const fileEl = document.getElementById('summary_file') as HTMLInputElement;
         const f = fileEl?.files?.[0];
-        if (!f) return;
+        if (!f) {
+          summaryMessage = '请选择 .md 或 .txt 文件';
+          return;
+        }
+        if (!isAllowedFile(f)) {
+          summaryMessage = '仅支持 .md/.txt 文档';
+          return;
+        }
+
         const fd = new FormData();
         fd.append('file', f);
-        const res = await fetch('/api/ai-summarize', { method: 'POST', body: fd });
-        const json = await res.json();
-        if (json?.summary) {
-          content_detail = json.summary as string;
+        summaryLoading = true;
+        try {
+          const res = await fetch('/api/ai-summarize', { method: 'POST', body: fd });
+          const json = await res.json();
+          if (res.ok && json?.summary) {
+            content_detail = json.summary as string;
+            summaryMessage = '摘要已生成，可编辑后提交';
+          } else {
+            summaryMessage = json?.error || '摘要生成失败，请稍后重试';
+          }
+        } catch (err) {
+          console.error('summary error', err);
+          summaryMessage = '请求失败，请检查网络后重试';
+        } finally {
+          summaryLoading = false;
         }
-      }}>AI 生成摘要</button>
+      }}>{summaryLoading ? '生成中...' : 'AI 生成摘要'}</button>
+      {#if summaryMessage}
+        <p class="section-hint">{summaryMessage}</p>
+      {/if}
     </div>
 
     <div class="form-actions">
