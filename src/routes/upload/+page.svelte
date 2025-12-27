@@ -20,6 +20,46 @@
     const extOk = /\.(md|txt)$/i.test(f.name);
     return mimeOk || extOk;
   };
+
+  // 拖动上传相关状态
+  let isDragging = false;
+  let draggedFileName = '';
+  let uploadedTitle = ''; // 存储上传成功后的标题
+
+  function handleDragEnter(e: DragEvent) {
+    e.preventDefault();
+    isDragging = true;
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    isDragging = false;
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    isDragging = false;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (isAllowedFile(file)) {
+        draggedFileName = file.name;
+        // 将拖入的文件设置到文件输入框
+        const fileEl = document.getElementById('summary_file') as HTMLInputElement;
+        if (fileEl) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          fileEl.files = dataTransfer.files;
+        }
+      } else {
+        summaryMessage = '仅支持 .md/.txt 文档';
+      }
+    }
+  }
 </script>
 
 <div class="page-content">
@@ -37,6 +77,7 @@
         use:enhance={({ formElement }) => {
           submitting = true;
           actionResult = null;
+          uploadedTitle = title; // 保存当前标题用于成功提示
           return async ({ result, update }) => {
             try {
               if (result.type === 'success') {
@@ -50,6 +91,7 @@
                 resource_url = '';
                 content_detail = '';
                 tags = '';
+                draggedFileName = '';
               } else {
                 // 非成功结果交给默认更新机制处理（如失败校验）
                 await update();
@@ -107,15 +149,50 @@
               <span class="ai-icon">✨</span>
               <span class="ai-label">AI 辅助生成</span>
             </div>
+            
+            <!-- 拖动上传区域 -->
+            <div
+              class="drop-zone {isDragging ? 'dragging' : ''} {draggedFileName ? 'has-file' : ''}"
+              on:dragenter={handleDragEnter}
+              on:dragleave={handleDragLeave}
+              on:dragover={handleDragOver}
+              on:drop={handleDrop}
+              role="region"
+              aria-label="拖动上传区域"
+            >
+              <input class="file-input-hidden" id="summary_file" type="file" accept=".md,.txt,text/markdown,text/plain" on:change={(e) => {
+                const target = e.target as HTMLInputElement;
+                if (target.files && target.files.length > 0) {
+                  draggedFileName = target.files[0].name;
+                }
+              }} />
+              {#if draggedFileName}
+                <div class="drop-zone-content">
+                  <span class="file-icon">📄</span>
+                  <span class="file-name">{draggedFileName}</span>
+                  <button type="button" class="clear-file-btn" on:click={() => {
+                    draggedFileName = '';
+                    const fileEl = document.getElementById('summary_file') as HTMLInputElement;
+                    if (fileEl) fileEl.value = '';
+                  }}>✕</button>
+                </div>
+              {:else}
+                <div class="drop-zone-content">
+                  <span class="drop-icon">📁</span>
+                  <span class="drop-text">拖动 .md / .txt 文件到此处</span>
+                  <span class="drop-hint">或</span>
+                  <label for="summary_file" class="file-select-btn">选择文件</label>
+                </div>
+              {/if}
+            </div>
+            
             <div class="ai-summary-content">
-              <input class="file-input-hidden" id="summary_file" type="file" accept=".md,.txt,text/markdown,text/plain" />
-              <label for="summary_file" class="file-select-btn">选择文件</label>
-              <button type="button" class="ai-generate-btn" disabled={summaryLoading} on:click={async () => {
+              <button type="button" class="ai-generate-btn" disabled={summaryLoading || !draggedFileName} on:click={async () => {
                 summaryMessage = '';
                 const fileEl = document.getElementById('summary_file') as HTMLInputElement;
                 const f = fileEl?.files?.[0];
                 if (!f) {
-                  summaryMessage = '请选择 .md 或 .txt 文件';
+                  summaryMessage = '请先选择或拖入文件';
                   return;
                 }
                 if (!isAllowedFile(f)) {
@@ -174,7 +251,11 @@
           {#if actionResult}
             <div class="result-message {actionResult.success ? 'success' : 'error'}">
               <span class="result-icon">{actionResult.success ? '✓' : '✗'}</span>
-              <span>{actionResult.message}</span>
+              {#if actionResult.success}
+                <span>资料成功上传：{uploadedTitle}</span>
+              {:else}
+                <span>{actionResult.message}</span>
+              {/if}
               {#if actionResult.success && actionResult.resourceId}
                 <a href="/resource/{actionResult.resourceId}" class="result-link">查看详情 →</a>
               {/if}
@@ -503,6 +584,85 @@
     text-decoration: underline;
   }
 
+  /* ===== 拖动上传区域 ===== */
+  .drop-zone {
+    border: 2px dashed var(--c-border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    transition: var(--transition);
+    background: var(--c-surface);
+    cursor: pointer;
+  }
+
+  .drop-zone:hover {
+    border-color: var(--c-primary);
+    background: rgba(44, 62, 80, 0.02);
+  }
+
+  .drop-zone.dragging {
+    border-color: var(--c-accent);
+    background: rgba(230, 126, 34, 0.05);
+    transform: scale(1.01);
+  }
+
+  .drop-zone.has-file {
+    border-color: var(--c-success);
+    border-style: solid;
+    background: rgba(16, 185, 129, 0.05);
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .drop-icon {
+    font-size: 2rem;
+    opacity: 0.7;
+  }
+
+  .drop-text {
+    font-size: 0.95rem;
+    color: var(--c-text-sub);
+  }
+
+  .drop-hint {
+    font-size: 0.8rem;
+    color: var(--c-text-sub);
+    opacity: 0.7;
+  }
+
+  .file-icon {
+    font-size: 1.5rem;
+  }
+
+  .file-name {
+    font-size: 0.95rem;
+    color: var(--c-text-main);
+    font-weight: 500;
+    word-break: break-all;
+  }
+
+  .clear-file-btn {
+    background: none;
+    border: none;
+    color: var(--c-text-sub);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+  }
+
+  .clear-file-btn:hover {
+    color: var(--c-danger);
+    background: rgba(239, 68, 68, 0.1);
+  }
+
   /* ===== 加载动画 ===== */
   .loading-spinner {
     display: inline-block;
@@ -542,6 +702,14 @@
     .ai-generate-btn {
       width: 100%;
       justify-content: center;
+    }
+
+    .drop-zone {
+      padding: 1rem;
+    }
+
+    .drop-icon {
+      font-size: 1.5rem;
     }
   }
   
