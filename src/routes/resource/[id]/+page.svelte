@@ -2,6 +2,28 @@
   import type { PageData } from './$types';
   export let data: PageData;
   const r = data.resource as any;
+
+  import { marked } from 'marked';
+  import sanitizeHtml from 'sanitize-html';
+
+  const renderMarkdown = (text: string) => {
+    const raw = text || '';
+    const html = marked.parse(raw, { breaks: true });
+    const htmlString = typeof html === 'string' ? html : '';
+
+    return sanitizeHtml(htmlString, {
+      ...sanitizeHtml.defaults,
+      allowedTags: [...sanitizeHtml.defaults.allowedTags, 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img'],
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        a: ['href', 'name', 'target', 'rel'],
+        img: ['src', 'alt', 'title']
+      },
+      transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' })
+      }
+    });
+  };
 </script>
 
 <div class="container resource-shell">
@@ -28,7 +50,9 @@
         <span>创建于 {new Date(r.created_at).toLocaleString()}</span>
       </div>
       <h3>摘要</h3>
-      <p class="content-detail">{r.content_detail}</p>
+      <div class="content-detail" aria-label="资源摘要">
+        {@html renderMarkdown(r.content_detail)}
+      </div>
     </div>
   {/if}
   
@@ -38,5 +62,7 @@
   .resource-shell { margin-top: 2rem; }
   .resource-body { padding: 1.25rem; border-radius: var(--radius-lg); }
   .meta { display: flex; gap: 1rem; color: var(--c-text-sub); margin-bottom: 0.8rem; }
-  .content-detail { white-space: pre-wrap; line-height: 1.7; }
+  .content-detail { line-height: 1.7; }
+  .content-detail h1, .content-detail h2, .content-detail h3 { margin: 0.4rem 0; }
+  .content-detail p { margin: 0.25rem 0; }
 </style>
