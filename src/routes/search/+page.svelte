@@ -37,7 +37,6 @@
 		<div class="container">
 			<div class="search-bar-wrap">
 				<div class="search-input-group">
-					<span class="search-icon">🔍</span>
 					<input
 						type="text"
 						bind:value={searchQuery}
@@ -421,6 +420,44 @@
 	.search-footer p {
 		color: var(--c-text-sub);
 		font-size: 0.85rem;
+	}
+
+	/* 按钮基础与主样式 */
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.6rem 1.2rem;
+		border-radius: var(--radius-md);
+		font-weight: 500;
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: var(--transition);
+		border: 1px solid var(--c-border);
+		background-color: var(--c-bg);
+		color: var(--c-text-main);
+	}
+
+	.btn:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+	}
+
+	.btn:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+		transform: none;
+		box-shadow: none;
+	}
+
+	.btn-primary {
+		background-color: var(--c-primary);
+		border-color: var(--c-primary);
+		color: #fff;
+	}
+
+	.btn-primary:hover {
+		background-color: var(--c-primary-hover);
 	}
 
 	/* 响应式 */

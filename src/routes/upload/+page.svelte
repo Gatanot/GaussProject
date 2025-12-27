@@ -192,6 +192,13 @@
     padding: 2.5rem 0 4rem;
   }
 
+  /* ===== 页面容器 ===== */
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 1.5rem; /* 扩大左右留白，确保对称 */
+  }
+
   /* ===== 页面标题区 ===== */
   .page-header {
     text-align: center;
@@ -244,8 +251,10 @@
   /* ===== 表单网格（课程信息） ===== */
   .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 固定为三列，列宽均分，避免贴边不对称 */
+    column-gap: 1.5rem; /* 更大的列间距，确保输入框间有明显空隙 */
+    row-gap: 1rem;
+    padding: 0; /* 移除网格侧填充，避免左右不一致 */
   }
 
   /* ===== 表单项 ===== */
@@ -281,6 +290,7 @@
     background-color: var(--c-surface);
     color: var(--c-text-main);
     transition: var(--transition);
+    box-sizing: border-box; /* 边界盒，确保宽度包含内边距与边框，防止贴边 */
   }
 
   .input:focus, .textarea:focus {

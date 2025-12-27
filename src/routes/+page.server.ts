@@ -21,15 +21,14 @@ export const load: PageServerLoad = async () => {
 			LIMIT 5
 		`);
 
-		// 获取热搜关键词 (Top 5)
+		// 获取热搜关键词 (Top 5) - 简单分组统计
 		const hotSearchesResult = await query(`
 			SELECT
 				payload,
-				count(*) as search_count
+				COUNT(*) AS search_count
 			FROM ${SCHEMA}.action_logs
 			WHERE action_type = 'SEARCH'
 				AND payload IS NOT NULL
-				AND payload != ''
 			GROUP BY payload
 			ORDER BY search_count DESC
 			LIMIT 5

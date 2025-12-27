@@ -239,8 +239,14 @@ async function ensureCoreTables(): Promise<void> {
 
 // 初始化数据库（如果需要）
 let initPromise: Promise<void> | null = null;
+let initialized = false; // 标记本进程已完成一次性初始化检查
 
 export async function initializeDatabase(): Promise<void> {
+    // 若已完成初始化检查，则直接返回，避免每次请求重复验证
+    if (initialized) {
+        return;
+    }
+
     // 如果已经在初始化中，返回相同的 Promise
     if (initPromise) {
         return initPromise;
@@ -280,6 +286,9 @@ export async function initializeDatabase(): Promise<void> {
             } else {
                 console.log('核心表检测通过，初始化完成');
             }
+
+            // 标记为已初始化，以避免后续请求重复执行初始化检查
+            initialized = true;
         } catch (error) {
             console.error('数据库初始化检查失败:', error);
             // 不抛出错误，允许应用继续运行

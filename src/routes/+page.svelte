@@ -4,6 +4,7 @@
 
 	let searchQuery = '';
 	let showHotResources = false;
+    let showHotSearches = false;
 
 	function performSearch() {
 		if (searchQuery.trim()) {
@@ -24,6 +25,14 @@
 	function closeHotResources() {
 		showHotResources = false;
 	}
+
+    function toggleHotSearches() {
+        showHotSearches = !showHotSearches;
+    }
+
+    function closeHotSearches() {
+        showHotSearches = false;
+    }
 </script>
 
 <div class="home-shell">
@@ -51,19 +60,6 @@
 							<span>搜索</span>
 						</button>
 					</div>
-					{#if data.hotSearches && data.hotSearches.length > 0}
-						<div class="hot-keywords">
-							<span class="hot-label">热搜</span>
-							{#each data.hotSearches as search, index}
-								<button
-									class="keyword-chip"
-									on:click={() => (searchQuery = search.payload)}
-								>
-									{search.payload}
-								</button>
-							{/each}
-						</div>
-					{/if}
 				</div>
 			</div>
 
@@ -74,10 +70,10 @@
 					<span class="stat-label">热门资源</span>
 				</button>
 				<div class="stat-divider"></div>
-				<div class="stat-item">
+				<button class="stat-item stat-clickable" on:click={toggleHotSearches}>
 					<span class="stat-value">{data.hotSearches?.length ?? 0}</span>
 					<span class="stat-label">搜索热词</span>
-				</div>
+				</button>
 				<div class="stat-divider"></div>
 				<a href="/upload" class="stat-item">
 					<span class="stat-value">AI</span>
@@ -140,6 +136,48 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- 热搜关键词弹窗 -->
+	{#if showHotSearches}
+        <div class="modal-overlay" on:click={closeHotSearches} on:keydown={(e) => e.key === 'Escape' && closeHotSearches()} role="button" tabindex="0" aria-label="关闭弹窗">
+            <div class="modal-card" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="hot-search-title" tabindex="-1">
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <span class="section-badge">趋势</span>
+                        <h2 id="hot-search-title">搜索热词</h2>
+                    </div>
+                    <button class="modal-close" on:click={closeHotSearches} aria-label="关闭">×</button>
+                </div>
+                <p class="modal-desc">近期同学们常搜的关键词</p>
+				<div class="modal-resources-list">
+					{#if data.hotSearches && data.hotSearches.length > 0}
+						{#each data.hotSearches as item}
+							<div class="modal-resource-item">
+								<div class="resource-meta">
+									<span class="tag-course">{item.payload}</span>
+									<span class="meta-stats">
+										<span class="stat">{item.search_count} 次搜索</span>
+									</span>
+								</div>
+								<div class="resource-author">
+									<a class="link-more" href="/search?q={encodeURIComponent(item.payload)}">用该词搜索 →</a>
+								</div>
+							</div>
+						{/each}
+					{:else}
+						<div class="modal-resource-item">
+							<div class="resource-meta">
+								<span class="tag-course">暂无热词</span>
+							</div>
+						</div>
+					{/if}
+				</div>
+                <div class="modal-footer">
+                    <a href="/search" class="link-more">进入搜索页 →</a>
+                </div>
+            </div>
+        </div>
+    {/if}
 
 	<section class="section-features">
 		<div class="container">
@@ -834,5 +872,41 @@
 		.modal-footer {
 			padding: 0.75rem 1rem;
 		}
+	}
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.6rem 1.2rem;
+		border-radius: var(--radius-md);
+		font-weight: 500;
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: var(--transition);
+		border: 1px solid var(--c-border);
+		background-color: var(--c-bg);
+		color: var(--c-text-main);
+	}
+
+	.btn:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+	}
+
+	.btn:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+		transform: none;
+		box-shadow: none;
+	}
+
+	.btn-primary {
+		background-color: var(--c-primary);
+		border-color: var(--c-primary);
+		color: #fff;
+	}
+
+	.btn-primary:hover {
+		background-color: var(--c-primary-hover);
 	}
 </style>
