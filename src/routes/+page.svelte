@@ -3,6 +3,7 @@
 	export let data: PageData;
 
 	let searchQuery = '';
+	let showHotResources = false;
 
 	function performSearch() {
 		if (searchQuery.trim()) {
@@ -14,6 +15,14 @@
 		if (event.key === 'Enter') {
 			performSearch();
 		}
+	}
+
+	function toggleHotResources() {
+		showHotResources = !showHotResources;
+	}
+
+	function closeHotResources() {
+		showHotResources = false;
 	}
 </script>
 
@@ -60,20 +69,20 @@
 
 			<!-- 统计与特点区：横向排列 -->
 			<div class="hero-stats-row">
-				<div class="stat-item">
+				<button class="stat-item stat-clickable" on:click={toggleHotResources}>
 					<span class="stat-value">{data.hotResources?.length ?? 0}</span>
 					<span class="stat-label">热门资源</span>
-				</div>
+				</button>
 				<div class="stat-divider"></div>
 				<div class="stat-item">
 					<span class="stat-value">{data.hotSearches?.length ?? 0}</span>
 					<span class="stat-label">搜索热词</span>
 				</div>
 				<div class="stat-divider"></div>
-				<div class="stat-item">
+				<a href="/upload" class="stat-item">
 					<span class="stat-value">AI</span>
 					<span class="stat-label">智能摘要</span>
-				</div>
+				</a>
 			</div>
 
 			<!-- 特点卡片区 -->
@@ -94,21 +103,21 @@
 		</div>
 	</section>
 
-	{#if data.hotResources && data.hotResources.length > 0}
-		<section class="section-featured">
-			<div class="container">
-				<div class="section-head">
-					<div class="section-title-group">
+	<!-- 热门资源弹窗 -->
+	{#if showHotResources && data.hotResources && data.hotResources.length > 0}
+		<div class="modal-overlay" on:click={closeHotResources} on:keydown={(e) => e.key === 'Escape' && closeHotResources()} role="button" tabindex="0" aria-label="关闭弹窗">
+			<div class="modal-card" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+				<div class="modal-header">
+					<div class="modal-title-group">
 						<span class="section-badge">精选</span>
-						<h2>热门资源</h2>
+						<h2 id="modal-title">热门资源</h2>
 					</div>
-					<p class="section-desc">被反复查看与下载的课程资料</p>
-					<a href="/search" class="link-more">查看全部 →</a>
+					<button class="modal-close" on:click={closeHotResources} aria-label="关闭">×</button>
 				</div>
-
-				<div class="resources-list">
+				<p class="modal-desc">被反复查看与下载的课程资料</p>
+				<div class="modal-resources-list">
 					{#each data.hotResources as resource}
-						<a href="/resource/{resource.id}" class="resource-item card">
+						<a href="/resource/{resource.id}" class="modal-resource-item">
 							<div class="resource-meta">
 								<span class="tag-course">{resource.course_name}</span>
 								<span class="meta-stats">
@@ -125,8 +134,11 @@
 						</a>
 					{/each}
 				</div>
+				<div class="modal-footer">
+					<a href="/search" class="link-more">查看全部资源 →</a>
+				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 
 	<section class="section-features">
@@ -180,10 +192,17 @@
 	}
 
 	.hero {
-		background: var(--c-surface);
-		border-bottom: 1px solid var(--c-border);
-		padding: 3rem 0 2.5rem;
-	}
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-border);
+    
+    /* --- 新增/修改的代码开始 --- */
+    min-height: 90vh;        /* 1. 强制最小高度为视口高度（占满一屏） */
+    display: flex;            /* 2. 启用 Flex 布局 */
+    flex-direction: column;   /* 3. 设置主轴为垂直方向 */
+    justify-content: center;  /* 4. 让内容在垂直方向居中 */
+    padding: 0;               /* 5. 清除原有的上下内边距，完全交由 Flex 居中 */
+    /* --- 新增/修改的代码结束 --- */
+}
 
 	/* 标题区：居中排列 */
 	.hero-header {
@@ -317,6 +336,7 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 0.25rem;
+		text-decoration: none;
 	}
 
 	.stat-value {
@@ -329,6 +349,20 @@
 	.stat-label {
 		font-size: 0.85rem;
 		color: var(--c-text-sub);
+	}
+
+	/* 可点击的统计项 */
+	.stat-clickable {
+		cursor: pointer;
+		padding: 0;
+		border: none;
+		background: transparent;
+		border-radius: var(--radius-md);
+		transition: var(--transition);
+	}
+
+	.stat-clickable:hover {
+		opacity: 0.7;
 	}
 
 	.stat-divider {
@@ -370,10 +404,142 @@
 		background: var(--c-accent);
 	}
 
-	/* ========== 精选资源区域 ========== */
-	.section-featured {
-		padding: 3rem 0;
+	/* ========== 热门资源弹窗 ========== */
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.5);
+		backdrop-filter: blur(4px);
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1.5rem;
+		animation: fadeIn 0.2s ease-out;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.modal-card {
+		background: var(--c-surface);
+		border: 1px solid var(--c-border);
+		border-radius: var(--radius-lg);
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		max-width: 800px;
+		width: 100%;
+		max-height: 85vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		animation: slideUp 0.25s ease-out;
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1.25rem 1.5rem 0.5rem;
+	}
+
+	.modal-title-group {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.modal-header h2 {
+		margin: 0;
+		font-size: 1.5rem;
+		color: var(--c-primary);
+		font-family: var(--font-serif);
+	}
+
+	.modal-close {
+		width: 36px;
+		height: 36px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: none;
+		background: transparent;
+		color: var(--c-text-sub);
+		font-size: 1.5rem;
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		transition: var(--transition);
+	}
+
+	.modal-close:hover {
+		background: rgba(44, 62, 80, 0.06);
+		color: var(--c-primary);
+	}
+
+	.modal-desc {
+		padding: 0 1.5rem 1rem;
+		margin: 0;
+		color: var(--c-text-sub);
+		font-size: 0.9rem;
+	}
+
+	.modal-resources-list {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0 1.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.modal-resource-item {
+		text-decoration: none;
+		color: inherit;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		border: 1px solid var(--c-border);
+		border-radius: var(--radius-md);
 		background: var(--c-bg);
+		transition: var(--transition);
+	}
+
+	.modal-resource-item:hover {
+		border-color: var(--c-primary);
+		box-shadow: var(--shadow-md);
+	}
+
+	.modal-resource-item .resource-name {
+		font-size: 1rem;
+	}
+
+	.modal-resource-item .resource-summary {
+		font-size: 0.85rem;
+		line-clamp: 2;
+		-webkit-line-clamp: 2;
+	}
+
+	.modal-footer {
+		padding: 1rem 1.5rem;
+		border-top: 1px solid var(--c-border);
+		text-align: center;
 	}
 
 	.section-head {
@@ -388,12 +554,6 @@
 		flex-direction: column;
 		text-align: center;
 		gap: 0.5rem;
-	}
-
-	.section-title-group {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
 	}
 
 	.section-badge {
@@ -434,29 +594,6 @@
 
 	.link-more:hover {
 		background: rgba(230, 126, 34, 0.1);
-	}
-
-	/* 资源列表 - 卡片网格 */
-	.resources-list {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1.25rem;
-	}
-
-	.resource-item {
-		text-decoration: none;
-		color: inherit;
-		padding: 1.25rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-		border-radius: var(--radius-md);
-	}
-
-	.resource-item:hover {
-		border-color: var(--c-primary);
-		box-shadow: var(--shadow-hover);
-		transform: translateY(-2px);
 	}
 
 	.resource-meta {
@@ -615,10 +752,6 @@
 			padding: 0.4rem 0.75rem;
 		}
 
-		.resources-list {
-			grid-template-columns: 1fr;
-		}
-
 		.features-list {
 			grid-template-columns: 1fr;
 		}
@@ -634,6 +767,10 @@
 
 		.link-more {
 			margin-left: 0;
+		}
+
+		.modal-card {
+			max-height: 90vh;
 		}
 	}
 
@@ -655,7 +792,10 @@
 			min-width: 80px;
 		}
 
-		.section-featured,
+		.stat-clickable {
+			padding: 0.35rem 0.5rem;
+		}
+
 		.section-features {
 			padding: 2rem 0;
 		}
@@ -669,6 +809,30 @@
 			width: 40px;
 			height: 40px;
 			font-size: 0.75rem;
+		}
+
+		.modal-overlay {
+			padding: 1rem;
+		}
+
+		.modal-header {
+			padding: 1rem 1rem 0.5rem;
+		}
+
+		.modal-header h2 {
+			font-size: 1.25rem;
+		}
+
+		.modal-desc {
+			padding: 0 1rem 0.75rem;
+		}
+
+		.modal-resources-list {
+			padding: 0 1rem;
+		}
+
+		.modal-footer {
+			padding: 0.75rem 1rem;
 		}
 	}
 </style>

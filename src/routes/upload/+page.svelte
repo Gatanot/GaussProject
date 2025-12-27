@@ -22,155 +22,522 @@
   };
 </script>
 
-<div class="container upload-shell">
-  <div class="section-header">
-    <div>
-      <p class="eyebrow">录入</p>
-      <h2>发布资源</h2>
-      <p class="section-hint">仅存链接与摘要，文件不入库</p>
+<div class="page-content">
+  <div class="container">
+    <!-- 页面标题区 -->
+    <header class="page-header">
+      <h1 class="page-title">发布资源</h1>
+      <p class="page-subtitle">仅存链接与摘要，文件不入库</p>
+    </header>
+
+    <!-- 表单卡片 -->
+    <div class="upload-card">
+      <form
+        method="POST"
+        use:enhance={({ formElement }) => {
+          submitting = true;
+          actionResult = null;
+          return async ({ result, update }) => {
+            try {
+              if (result.type === 'success') {
+                actionResult = result.data as any;
+                // 清空所有输入栏，避免重复提交
+                formElement.reset();
+                title = '';
+                course_name = '';
+                course_teacher = '';
+                course_department = '';
+                resource_url = '';
+                content_detail = '';
+                tags = '';
+              } else {
+                // 非成功结果交给默认更新机制处理（如失败校验）
+                await update();
+              }
+            } finally {
+              submitting = false;
+            }
+          };
+        }}
+      >
+        <!-- 课程信息分组 -->
+        <fieldset class="form-fieldset">
+          <legend class="fieldset-legend">课程信息</legend>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="label" for="course_name">课程名称 <span class="required">*</span></label>
+              <input class="input" id="course_name" name="course_name" placeholder="如：数据库系统原理" bind:value={course_name} required />
+            </div>
+
+            <div class="form-group">
+              <label class="label" for="course_teacher">授课教师</label>
+              <input class="input" id="course_teacher" name="course_teacher" placeholder="如：王老师" bind:value={course_teacher} />
+            </div>
+
+            <div class="form-group">
+              <label class="label" for="course_department">所属院系</label>
+              <input class="input" id="course_department" name="course_department" placeholder="如：计算机学院" bind:value={course_department} />
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- 资源信息分组 -->
+        <fieldset class="form-fieldset">
+          <legend class="fieldset-legend">资源详情</legend>
+
+          <div class="form-group">
+            <label class="label" for="title">标题 <span class="required">*</span></label>
+            <input class="input" id="title" name="title" placeholder="如：数据库系统原理期末复习笔记" bind:value={title} required />
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="resource_url">资源链接 <span class="required">*</span></label>
+            <input class="input" id="resource_url" name="resource_url" type="url" placeholder="https://..." bind:value={resource_url} required />
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="content_detail">描述 / 摘要 <span class="required">*</span></label>
+            <textarea class="textarea" id="content_detail" name="content_detail" rows="6" bind:value={content_detail} required placeholder="可手写，或上传 .md/.txt 让 AI 自动生成"></textarea>
+          </div>
+
+          <!-- AI 摘要生成区 -->
+          <div class="ai-summary-box">
+            <div class="ai-summary-header">
+              <span class="ai-icon">✨</span>
+              <span class="ai-label">AI 辅助生成</span>
+            </div>
+            <div class="ai-summary-content">
+              <input class="file-input-hidden" id="summary_file" type="file" accept=".md,.txt,text/markdown,text/plain" />
+              <label for="summary_file" class="file-select-btn">选择文件</label>
+              <button type="button" class="ai-generate-btn" disabled={summaryLoading} on:click={async () => {
+                summaryMessage = '';
+                const fileEl = document.getElementById('summary_file') as HTMLInputElement;
+                const f = fileEl?.files?.[0];
+                if (!f) {
+                  summaryMessage = '请选择 .md 或 .txt 文件';
+                  return;
+                }
+                if (!isAllowedFile(f)) {
+                  summaryMessage = '仅支持 .md/.txt 文档';
+                  return;
+                }
+
+                const fd = new FormData();
+                fd.append('file', f);
+                summaryLoading = true;
+                try {
+                  const res = await fetch('/api/ai-summarize', { method: 'POST', body: fd });
+                  const json = await res.json();
+                  if (res.ok && json?.summary) {
+                    content_detail = json.summary as string;
+                    summaryMessage = '摘要已生成，可编辑后提交';
+                  } else {
+                    summaryMessage = json?.error || '摘要生成失败，请稍后重试';
+                  }
+                } catch (err) {
+                  console.error('summary error', err);
+                  summaryMessage = '请求失败，请检查网络后重试';
+                } finally {
+                  summaryLoading = false;
+                }
+              }}>
+                {#if summaryLoading}
+                  <span class="loading-spinner"></span> 生成中...
+                {:else}
+                  AI 生成摘要
+                {/if}
+              </button>
+            </div>
+            {#if summaryMessage}
+              <p class="ai-message {summaryMessage.includes('生成') ? 'success' : 'info'}">{summaryMessage}</p>
+            {/if}
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="tags">标签</label>
+            <input class="input" id="tags" name="tags" placeholder="例如：数据库, 复习, 期末（用逗号分隔）" bind:value={tags} />
+            <p class="hint">会自动去重与截断（最大 30 字）</p>
+          </div>
+        </fieldset>
+
+        <!-- 提交区域 -->
+        <div class="form-footer">
+          <button class="submit-btn" disabled={submitting}>
+            {#if submitting}
+              <span class="loading-spinner"></span> 提交中...
+            {:else}
+              发布资源
+            {/if}
+          </button>
+          
+          {#if actionResult}
+            <div class="result-message {actionResult.success ? 'success' : 'error'}">
+              <span class="result-icon">{actionResult.success ? '✓' : '✗'}</span>
+              <span>{actionResult.message}</span>
+              {#if actionResult.success && actionResult.resourceId}
+                <a href="/resource/{actionResult.resourceId}" class="result-link">查看详情 →</a>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </form>
     </div>
   </div>
-
-  <form
-    class="card upload-form"
-    method="POST"
-    use:enhance={({ formElement }) => {
-      submitting = true;
-      actionResult = null;
-      return async ({ result, update }) => {
-        try {
-          if (result.type === 'success') {
-            actionResult = result.data as any;
-            // 清空所有输入栏，避免重复提交
-            formElement.reset();
-            title = '';
-            course_name = '';
-            course_teacher = '';
-            course_department = '';
-            resource_url = '';
-            content_detail = '';
-            tags = '';
-          } else {
-            // 非成功结果交给默认更新机制处理（如失败校验）
-            await update();
-          }
-        } finally {
-          submitting = false;
-        }
-      };
-    }}
-  >
-    <div class="form-row">
-      <label for="course_name">课程名称</label>
-      <input id="course_name" name="course_name" placeholder="如：数据库系统原理" bind:value={course_name} required />
-    </div>
-    <div class="form-row">
-      <label for="course_teacher">授课教师</label>
-      <input id="course_teacher" name="course_teacher" placeholder="如：王老师" bind:value={course_teacher} />
-    </div>
-    <div class="form-row">
-      <label for="course_department">所属院系</label>
-      <input id="course_department" name="course_department" placeholder="如：计算机学院" bind:value={course_department} />
-    </div>
-
-    <div class="form-row">
-      <label for="title">标题</label>
-      <input id="title" name="title" placeholder="如：数据库系统原理期末复习笔记" bind:value={title} required />
-    </div>
-
-    <div class="form-row">
-      <label for="resource_url">资源链接</label>
-      <input id="resource_url" name="resource_url" placeholder="https://..." bind:value={resource_url} required />
-    </div>
-
-    <div class="form-row">
-      <label for="content_detail">描述 / 摘要</label>
-      <textarea id="content_detail" name="content_detail" rows="8" bind:value={content_detail} required placeholder="可手写，或上传 .md/.txt 让 AI 自动生成"></textarea>
-    </div>
-
-    <div class="form-row">
-      <label for="tags">标签（用中文逗号/英文逗号分隔）</label>
-      <input id="tags" name="tags" placeholder="例如：数据库, 复习, 期末" bind:value={tags} />
-      <p class="section-hint">会自动去重与截断（最大 30 字），插入到 resource_tags</p>
-    </div>
-
-    <div class="form-row">
-      <label for="summary_file">上传文件生成摘要（.md/.txt）</label>
-      <input id="summary_file" type="file" accept=".md,.txt,text/markdown,text/plain" />
-      <button type="button" class="btn btn-outline" disabled={summaryLoading} on:click={async () => {
-        summaryMessage = '';
-        const fileEl = document.getElementById('summary_file') as HTMLInputElement;
-        const f = fileEl?.files?.[0];
-        if (!f) {
-          summaryMessage = '请选择 .md 或 .txt 文件';
-          return;
-        }
-        if (!isAllowedFile(f)) {
-          summaryMessage = '仅支持 .md/.txt 文档';
-          return;
-        }
-
-        const fd = new FormData();
-        fd.append('file', f);
-        summaryLoading = true;
-        try {
-          const res = await fetch('/api/ai-summarize', { method: 'POST', body: fd });
-          const json = await res.json();
-          if (res.ok && json?.summary) {
-            content_detail = json.summary as string;
-            summaryMessage = '摘要已生成，可编辑后提交';
-          } else {
-            summaryMessage = json?.error || '摘要生成失败，请稍后重试';
-          }
-        } catch (err) {
-          console.error('summary error', err);
-          summaryMessage = '请求失败，请检查网络后重试';
-        } finally {
-          summaryLoading = false;
-        }
-      }}>{summaryLoading ? '生成中...' : 'AI 生成摘要'}</button>
-      {#if summaryMessage}
-        <p class="section-hint">{summaryMessage}</p>
-      {/if}
-    </div>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" disabled={submitting}>
-        {submitting ? '提交中...' : '提交'}
-      </button>
-      {#if actionResult}
-        <span class="submit-result {actionResult.success ? 'ok' : 'err'}">
-          {actionResult.message}
-          {#if actionResult.success && actionResult.resourceId}
-            · <a href="/resource/{actionResult.resourceId}">查看详情 →</a>
-          {/if}
-        </span>
-      {/if}
-    </div>
-  </form>
 </div>
 
 <style>
-  .upload-shell {
-    margin-top: 2rem;
+  /* ===== 页面布局 ===== */
+  .page-content {
+    padding: 2.5rem 0 4rem;
   }
-  .upload-form {
-    padding: 1.25rem;
-    border-radius: var(--radius-lg);
+
+  /* ===== 页面标题区 ===== */
+  .page-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
   }
-  .form-row { margin-bottom: 1rem; display: grid; gap: 0.5rem; }
-  label { font-weight: 700; color: var(--c-primary); }
-  input, select, textarea {
-    border: 1px solid var(--c-border);
-    background: var(--c-surface);
-    padding: 0.7rem 0.8rem;
-    border-radius: var(--radius-md);
+
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--c-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .page-subtitle {
     font-size: 0.95rem;
-    color: var(--c-text-main);
+    color: var(--c-text-sub);
   }
-  .section-hint { color: var(--c-text-sub); font-size: 0.85rem; margin-top: 0.25rem; }
-  .form-actions { display: flex; align-items: center; gap: 0.75rem; }
-  .submit-result { font-size: 0.95rem; }
-  .submit-result.ok { color: var(--c-primary); }
-  .submit-result.err { color: var(--c-accent); }
+
+  /* ===== 表单卡片 ===== */
+  .upload-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ===== 表单分组 ===== */
+  .form-fieldset {
+    border: none;
+    padding: 0;
+    margin: 0 0 2rem 0;
+  }
+
+  .fieldset-legend {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--c-primary);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--c-border);
+    width: 100%;
+    display: block;
+  }
+
+  /* ===== 表单网格（课程信息） ===== */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+  }
+
+  /* ===== 表单项 ===== */
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-grid .form-group {
+    margin-bottom: 0;
+  }
+
+  .label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-main);
+    margin-bottom: 0.5rem;
+  }
+
+  .required {
+    color: var(--c-accent);
+  }
+
+  .input, .textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0; /* 防止 grid/flex 子项溢出 */
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: var(--font-sans);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    background-color: var(--c-surface);
+    color: var(--c-text-main);
+    transition: var(--transition);
+  }
+
+  .input:focus, .textarea:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
+  }
+
+  .input::placeholder, .textarea::placeholder {
+    color: var(--c-text-sub);
+    opacity: 0.7;
+  }
+
+  .textarea {
+    resize: vertical;
+    min-height: 140px;
+    line-height: 1.6;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+    color: var(--c-text-sub);
+    margin-top: 0.4rem;
+  }
+
+  /* ===== AI 摘要生成区 ===== */
+  .ai-summary-box {
+    background: linear-gradient(135deg, rgba(230, 126, 34, 0.03) 0%, rgba(44, 62, 80, 0.03) 100%);
+    border: 1px dashed var(--c-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .ai-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .ai-icon {
+    font-size: 1rem;
+  }
+
+  .ai-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-text-sub);
+  }
+
+  .ai-summary-content {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* ===== 文件选择按钮 ===== */
+  .file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .file-select-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid var(--c-border);
+    background-color: transparent;
+    color: var(--c-text-main);
+    white-space: nowrap;
+  }
+
+  .file-select-btn:hover {
+    border-color: var(--c-primary);
+    color: var(--c-primary);
+  }
+
+  /* ===== AI 生成摘要按钮 ===== */
+  .ai-generate-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid var(--c-border);
+    background-color: transparent;
+    color: var(--c-text-main);
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .ai-generate-btn:hover {
+    border-color: var(--c-primary);
+    color: var(--c-primary);
+  }
+
+  .ai-generate-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .ai-message {
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .ai-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--c-success);
+  }
+
+  .ai-message.info {
+    background: rgba(230, 126, 34, 0.1);
+    color: var(--c-accent);
+  }
+
+  /* ===== 提交区域 ===== */
+  .form-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--c-border);
+  }
+
+  /* ===== 发布资源按钮 ===== */
+  .submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+    gap: 0.5rem;
+    background-color: var(--c-primary);
+    color: white;
+    min-width: 160px;
+  }
+
+  .submit-btn:hover {
+    background-color: var(--c-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ===== 结果消息 ===== */
+  .result-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+  }
+
+  .result-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--c-success);
+  }
+
+  .result-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--c-danger);
+  }
+
+  .result-icon {
+    font-weight: 700;
+  }
+
+  .result-link {
+    margin-left: 0.5rem;
+    color: var(--c-primary);
+    font-weight: 500;
+  }
+
+  .result-link:hover {
+    color: var(--c-accent);
+    text-decoration: underline;
+  }
+
+  /* ===== 加载动画 ===== */
+  .loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 640px) {
+    .upload-card {
+      padding: 1.25rem; /* 减小内边距，留更多空间给内容 */
+      margin: 0;
+      width: 100%;
+      border-radius: var(--radius-md);
+    }
+
+    .page-title {
+      font-size: 1.6rem;
+    }
+
+    .ai-summary-content {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .file-select-btn,
+    .ai-generate-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
