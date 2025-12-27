@@ -1,12 +1,22 @@
 <script lang="ts">
-	type User = {
-		id: number;
-		username: string;
-		role: string;
-		student_id?: string;
-	} | null;
+	 type User = {
+	 	id: number;
+	 	username: string;
+	 	role: string;
+	 	student_id?: string;
+	 } | null;
 
-	let { user = null }: { user: User } = $props();
+	 let {
+	 	user = null,
+	 	chatOpen = false,
+	 	toggleChat
+	 }: { user: User; chatOpen?: boolean; toggleChat?: () => void } = $props();
+
+	 const handleToggleChat = () => {
+	 	if (typeof toggleChat === 'function') {
+	 		toggleChat();
+	 	}
+	 };
 </script>
 
 <header class="global-header">
@@ -14,6 +24,9 @@
 		<a href="/" class="logo">OpenBrain</a>
 		<nav class="nav-links">
 			<a href="/" class="nav-link">首页</a>
+			<button class="nav-link nav-link-btn" type="button" onclick={handleToggleChat}>
+				客服
+			</button>
 			<a href="/search" class="nav-link">搜索</a>
 			<a href="/upload" class="nav-link">上传资源</a>
 			{#if user}
@@ -72,11 +85,25 @@
 		padding: 0.5rem 0.85rem;
 		border-radius: var(--radius-sm);
 		transition: var(--transition);
+		border: none;
+		background: transparent;
+		cursor: pointer;
 	}
 
 	.nav-link:hover {
 		color: var(--c-primary);
 		background: rgba(44, 62, 80, 0.05);
+	}
+
+	.nav-link-btn {
+		border: 1px solid var(--c-border);
+		background: rgba(44, 62, 80, 0.03);
+	}
+
+	.nav-link-btn:hover {
+		background: rgba(44, 62, 80, 0.08);
+		color: var(--c-primary);
+		border-color: var(--c-primary);
 	}
 
 	/* 通用 Header 按钮基础样式 */
