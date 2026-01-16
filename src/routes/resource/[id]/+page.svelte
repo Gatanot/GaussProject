@@ -1,7 +1,12 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageData, ActionData } from './$types';
+  import { enhance } from '$app/forms';
+  import type { ActionResult, SubmitFunction } from '@sveltejs/kit';
   export let data: PageData;
-  const r = data.resource as any;
+  export let form: ActionData;
+  let r = data.resource as any;
+  let comments = data.comments ?? [];
+  let user = data.user ?? null;
 
   import { marked } from 'marked';
   import sanitizeHtml from 'sanitize-html';
@@ -23,6 +28,44 @@
         a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' })
       }
     });
+  };
+
+  // 评论表单状态
+  let commentContent = (form as any)?.content ?? '';
+  let commentSubmitting = false;
+  let commentError = '';
+  let commentSuccess = '';
+
+  $: r = data.resource as any;
+  $: comments = data.comments ?? [];
+  $: user = data.user ?? null;
+  $: if ((form as any)?.content !== undefined) {
+    commentContent = (form as any)?.content ?? '';
+  }
+
+  const commentEnhance: SubmitFunction = ({ formElement }) => {
+    commentSubmitting = true;
+    commentError = '';
+    commentSuccess = '';
+    return async ({ result, update }: { result: ActionResult; update: () => Promise<void> }) => {
+      commentSubmitting = false;
+      if (result.type === 'success') {
+        const payload = result.data as any;
+        if (payload?.success) {
+          commentSuccess = payload?.message ?? '评论已发布';
+          commentContent = '';
+          formElement.reset();
+          await update();
+        } else {
+          commentError = payload?.message ?? '评论提交失败';
+        }
+      } else if (result.type === 'failure') {
+        const payload = result.data as any;
+        commentError = payload?.message ?? '评论提交失败';
+      } else if (result.type === 'error') {
+        commentError = '评论提交失败，请稍后重试';
+      }
+    };
   };
 
   // 格式化日期
@@ -114,6 +157,77 @@
         <div class="content-body">
           <div class="content-detail markdown-body" aria-label="资源摘要">
             {@html renderMarkdown(r.content_detail)}
+          </div>
+        </div>
+      </div>
+
+      <!-- 评论区 -->
+      <div class="comment-card card">
+        <div class="content-header">
+          <span class="section-badge">评论</span>
+          <h2>互动讨论</h2>
+          <span class="comment-count">{comments.length} 条</span>
+        </div>
+        <div class="content-body">
+          {#if user}
+            <form method="POST" action="?/comment" class="comment-form" use:enhance={commentEnhance}>
+              <div class="form-group">
+                <label class="label" for="comment-content">发表评论</label>
+                <textarea
+                  id="comment-content"
+                  name="content"
+                  class="textarea comment-textarea"
+                  rows="4"
+                  maxlength="500"
+                  bind:value={commentContent}
+                  placeholder="写下你的观点或补充..."
+                  required
+                ></textarea>
+                <p class="comment-help">最多 500 字，文明发言</p>
+              </div>
+
+              {#if commentError || ((form as any)?.success === false)}
+                <div class="comment-alert comment-alert-error">
+                  {commentError || (form as any)?.message}
+                </div>
+              {/if}
+              {#if commentSuccess || ((form as any)?.success === true)}
+                <div class="comment-alert comment-alert-success">
+                  {commentSuccess || (form as any)?.message}
+                </div>
+              {/if}
+
+              <div class="comment-actions">
+                <button class="btn btn-primary" disabled={commentSubmitting}>
+                  {#if commentSubmitting}
+                    发送中...
+                  {:else}
+                    发布评论
+                  {/if}
+                </button>
+              </div>
+            </form>
+          {:else}
+            <div class="comment-login">
+              <p>登录后才能发表评论</p>
+              <a class="btn btn-primary" href={`/login?redirect=/resource/${r.id}`}>前往登录</a>
+            </div>
+          {/if}
+
+          <div class="comment-list">
+            {#if comments.length > 0}
+              {#each comments as comment}
+                <article class="comment-item">
+                  <div class="comment-meta">
+                    <span class="comment-author">{comment.username}</span>
+                    <span class="comment-date">{formatDate(comment.created_at)}</span>
+                  </div>
+                  <p class="comment-content">{comment.content}</p>
+                </article>
+              {/each}
+            {:else}
+              <div class="comment-empty">还没有评论，快来抢沙发吧！</div>
+            {/if}
           </div>
         </div>
       </div>
@@ -393,6 +507,124 @@
     padding: 2rem;
   }
 
+  /* ========== 评论区 ========== */
+  .comment-card {
+    padding: 0;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .comment-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+
+  .comment-count {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--c-text-sub);
+  }
+
+  .comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .comment-textarea {
+    min-height: 120px;
+  }
+
+  .comment-help {
+    font-size: 0.85rem;
+    color: var(--c-text-sub);
+    margin-top: 0.35rem;
+  }
+
+  .comment-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .comment-alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    border: 1px solid transparent;
+  }
+
+  .comment-alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #065f46;
+  }
+
+  .comment-alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #991b1b;
+  }
+
+  .comment-login {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(44, 62, 80, 0.04);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+  }
+
+  .comment-login p {
+    margin: 0;
+    color: var(--c-text-sub);
+  }
+
+  .comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .comment-item {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--c-border);
+    background: var(--c-bg);
+  }
+
+  .comment-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--c-text-sub);
+    margin-bottom: 0.5rem;
+  }
+
+  .comment-author {
+    font-weight: 600;
+    color: var(--c-primary);
+  }
+
+  .comment-content {
+    white-space: pre-wrap;
+    color: var(--c-text-main);
+  }
+
+  .comment-empty {
+    text-align: center;
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--c-border);
+    background: var(--c-bg);
+    color: var(--c-text-sub);
+  }
+
   /* ========== Markdown 内容样式 ========== */
   .content-detail {
     line-height: 1.8;
@@ -580,6 +812,21 @@
 
     .content-body {
       padding: 1.5rem;
+    }
+
+    .comment-login {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .comment-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .comment-actions .btn {
+      width: 100%;
+      justify-content: center;
     }
 
     .action-footer {

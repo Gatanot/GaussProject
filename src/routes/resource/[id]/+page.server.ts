@@ -1,11 +1,11 @@
 import type { PageServerLoad, Actions } from './$types';
 import { query, SCHEMA } from '$lib/server/db';
-import { redirect } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params }) => {
     const id = Number(params.id);
     if (!Number.isFinite(id)) {
-        return { resource: null };
+        return { resource: null, comments: [] };
     }
 
     const res = await query(
@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ params }) => {
     );
 
     if (res.rows.length === 0) {
-        return { resource: null };
+        return { resource: null, comments: [] };
     }
 
     // 增加一次查看计数（错误不影响页面展示）
@@ -28,10 +28,73 @@ export const load: PageServerLoad = async ({ params }) => {
         console.error('更新查看次数失败', e);
     }
 
-    return { resource: res.rows[0] };
+    const comments = await query(
+        `SELECT c.id, c.content, c.rating, c.created_at, u.username
+         FROM ${SCHEMA}.comments c
+         JOIN ${SCHEMA}.users u ON c.user_id = u.id
+         WHERE c.resource_id = $1
+         ORDER BY c.created_at DESC`,
+        [id]
+    );
+
+    return { resource: res.rows[0], comments: comments.rows };
 };
 
 export const actions: Actions = {
+    comment: async ({ request, params, locals }) => {
+        if (!locals.user) {
+            return fail(401, {
+                success: false,
+                message: '请先登录后发表评论'
+            });
+        }
+
+        const id = Number(params.id);
+        if (!Number.isFinite(id)) {
+            return fail(400, {
+                success: false,
+                message: '资源参数不正确'
+            });
+        }
+
+        const formData = await request.formData();
+        const content = String(formData.get('content') ?? '').trim();
+
+        if (!content) {
+            return fail(400, {
+                success: false,
+                message: '请输入评论内容',
+                content
+            });
+        }
+
+        if (content.length > 500) {
+            return fail(400, {
+                success: false,
+                message: '评论内容请控制在 500 字以内',
+                content
+            });
+        }
+
+        const existing = await query(`SELECT id FROM ${SCHEMA}.resources WHERE id = $1`, [id]);
+        if (existing.rows.length === 0) {
+            return fail(404, {
+                success: false,
+                message: '资源不存在，无法发表评论'
+            });
+        }
+
+        await query(
+            `INSERT INTO ${SCHEMA}.comments (resource_id, user_id, content)
+             VALUES ($1, $2, $3)`,
+            [id, locals.user.id, content]
+        );
+
+        return {
+            success: true,
+            message: '评论已发布'
+        };
+    },
     download: async ({ params, locals, getClientAddress }) => {
         const id = Number(params.id);
         if (!Number.isFinite(id)) {
